@@ -8,7 +8,7 @@ http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/htt
 http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
 	<slack:config name="Slack_Connector_Config" doc:name="Slack Connector Config" doc:id="16f9177c-890c-4e4d-8d94-6d963186f722" >
 		<slack:slack-auth-connection >
-			<slack:oauth-authorization-code consumerKey="3467877647971.3496955813589" consumerSecret="8cc74f04855e565cbd9d2068eb643445" scopes="channels:manage channels:read channels:write.invites chat:write groups:read groups:write groups:write.invites im:read im:write mpim:read mpim:write users:read users:read.email" authorizationUrl="https://slack.com/oauth/v2/authorize" accessTokenUrl="https://slack.com/api/oauth.v2.access"/>
+			<slack:oauth-authorization-code consumerKey="${slack.key}" consumerSecret="${slack.secret}" scopes="channels:manage channels:read channels:write.invites chat:write groups:read groups:write groups:write.invites im:read im:write mpim:read mpim:write users:read users:read.email" authorizationUrl="https://slack.com/oauth/v2/authorize" accessTokenUrl="https://slack.com/api/oauth.v2.access"/>
 			<slack:oauth-callback-config listenerConfig="HTTPS_Listener_config" callbackPath="/callback_slack" authorizePath="/authorize_slack" externalCallbackUrl="https://127.0.0.1:8082/callback_slack" />
 		</slack:slack-auth-connection>
 	</slack:config>
