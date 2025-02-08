@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:tls="http://www.mulesoft.org/schema/mule/tls" xmlns:slack="http://www.mulesoft.org/schema/mule/slack"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:admin-sdkapi="http://www.mulesoft.org/schema/mule/admin-sdkapi" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/admin-sdkapi http://www.mulesoft.org/schema/mule/admin-sdkapi/current/mule-admin-sdkapi.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/slack http://www.mulesoft.org/schema/mule/slack/current/mule-slack.xsd
+http://www.mulesoft.org/schema/mule/tls http://www.mulesoft.org/schema/mule/tls/current/mule-tls.xsd">
+	<admin-sdkapi:config name="Admin_SDK_API_Config" doc:name="Admin SDK API Config" doc:id="3ee7d8c1-cdd3-4d9a-a5ca-9937ac5cf933" property_host="${google.host}" property_port="443" property_protocol="HTTPS" property_client-id="${google.client_id}" property_client-secret="${google.client_secret}" property_local-callback-config="HTTPS_Listener_config" property_external-callback-url="https://localhost:8082/callback" property_local-authorization-url="https://localhost:8082/authorize"/>
+
+	<http:listener-config name="HTTPS_Listener_config" doc:name="HTTP Listener config" doc:id="0d773bc8-8607-45a8-bdf6-602276f0f1c4" >
+		<http:listener-connection host="0.0.0.0" port="8082" protocol="HTTPS">
+			<tls:context >
+				<tls:key-store type="jks" path="keystore.jks" alias="mule" keyPassword="password" password="password" />
+			</tls:context>
+		</http:listener-connection>
+	</http:listener-config>
+	<configuration-properties doc:name="Configuration properties" doc:id="4fd09f83-d309-4da7-83ab-7ec2fd01238e" file="mule-properties.yaml" />
+	<flow name="google-admin-sdk-apiFlow" doc:id="f832b757-5e80-491e-9c90-6ed94a6261b6" >
+		<http:listener doc:name="/groups" doc:id="47eb9c10-1c8e-44d1-be09-18d6252107a7" config-ref="HTTPS_Listener_config" path="/groups"/>
+		<slack:get-conversationslist doc:name="Conversations list" doc:id="1aba0df0-3741-46d5-8ca5-4bce794be94e" config-ref="Slack_Connector_Config" types="public_channel,private_channel" target="channels"/>
+		<admin-sdkapi:directorygroupslist doc:name="List Google Groups" doc:id="8b3c44dc-cb56-4066-bee3-7dcecda0348f" config-ref="Admin_SDK_API_Config" customer="C03yatig6"/>
+		<foreach doc:name="For Each" doc:id="bf6356c2-6226-4f68-8993-33bdb9fd272e" collection="#[payload.groups]">
+			<set-variable value="#[payload]" doc:name="Set Variable" doc:id="b2edee77-37f9-4f1d-bf0c-b6eb49e972a6" variableName="groups"/>
+			<admin-sdkapi:directorymemberslist doc:name="List Members of Each Group" doc:id="f2f02f20-3e57-447c-a845-220dca8da68d" config-ref="Admin_SDK_API_Config" group-key="#[payload.id]" />
+			<foreach doc:name="For Each" doc:id="a4c81ca8-6d1b-4838-b151-74e6abc00852" collection="#[payload.members]">
+				<slack:get-userslookup-by-email doc:name="Get User ID" doc:id="283d0746-ed50-4e37-a7a7-244a9f3f4232" config-ref="Slack_Connector_Config" email="#[payload.email]" target="userid" targetValue="#[payload.user.id]"/>
+				<slack:get-conversationsmembers doc:name="Find if Member Exists in Channel" doc:id="26956130-be3c-4c45-901b-901da6b5adbf" config-ref="Slack_Connector_Config" channel="#[(vars.channels filter ($.name == lower(vars.groups.name)))[0].id]"/>
+				<choice doc:name="Choice" doc:id="3d5fa263-c2e2-4d81-94d2-e13799b8f4ab" >
+					<when expression="#[!(payload contains vars.userid)]">
+						<ee:transform doc:name="Transform Message" doc:id="aa206dfc-b904-4208-9e3c-2224bc4e8d21">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	channel: (vars.channels filter ($.name == lower(vars.groups.name)))[0].id,
+	users: vars.userid
+}
+]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+						<slack:create-conversationsinvite doc:name="Add User to Channel" doc:id="c691cfab-15d0-4961-97fe-4476a74d5735" config-ref="Slack_Connector_Config" />
+						<ee:transform doc:name="Transform Message" doc:id="b52dedc7-7274-40cb-bf3a-45ecde4bda12">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+					</when>
+					<otherwise >
+						<logger level="INFO" doc:name="Logger" doc:id="bcb3e46b-1414-4e29-b129-d12d4ef71ce5" message="#[payload]" category="*************************** USER EXISTS *************************** "/>
+					</otherwise>
+				</choice>
+			</foreach>
+		</foreach>
+	</flow>
+</mule>

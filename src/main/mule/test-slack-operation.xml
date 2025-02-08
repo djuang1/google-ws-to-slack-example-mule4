@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns:slack="http://www.mulesoft.org/schema/mule/slack"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/slack http://www.mulesoft.org/schema/mule/slack/current/mule-slack.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<slack:config name="Slack_Connector_Config" doc:name="Slack Connector Config" doc:id="16f9177c-890c-4e4d-8d94-6d963186f722" >
+		<slack:slack-auth-connection >
+			<slack:oauth-authorization-code consumerKey="3467877647971.3496955813589" consumerSecret="8cc74f04855e565cbd9d2068eb643445" scopes="channels:manage channels:read channels:write.invites chat:write groups:read groups:write groups:write.invites im:read im:write mpim:read mpim:write users:read users:read.email" authorizationUrl="https://slack.com/oauth/v2/authorize" accessTokenUrl="https://slack.com/api/oauth.v2.access"/>
+			<slack:oauth-callback-config listenerConfig="HTTPS_Listener_config" callbackPath="/callback_slack" authorizePath="/authorize_slack" externalCallbackUrl="https://127.0.0.1:8082/callback_slack" />
+		</slack:slack-auth-connection>
+	</slack:config>
+	<flow name="google-to-slackFlow2" doc:id="47036e03-aafc-45fa-ac2e-8df0f677f267" >
+		<http:listener doc:name="/invite" doc:id="ad89d967-74d1-4731-9454-b1f759da8f3a" config-ref="HTTPS_Listener_config" path="/invite"/>
+		<ee:transform doc:name="Transform Message" doc:id="bbfe2399-25aa-4310-95d9-76430efba303" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	channel: "C089URDV21W",
+	users: "U050KK1DMK6"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<slack:create-conversationsinvite doc:name="Invite Users to Channel" doc:id="e5d5bd79-d415-4b86-9eb9-6b9a50202755" config-ref="Slack_Connector_Config"/>
+		<ee:transform doc:name="Transform Message" doc:id="ae661fde-e2a2-457c-b22e-dab121acf619" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="google-to-slackFlow1" doc:id="dd2b0106-3b30-4f8b-af7b-eb3ccc71c71b" >
+		<http:listener doc:name="/listchannels" doc:id="42f5af9b-f0fc-4363-8c8c-7c89aad340c2" config-ref="HTTPS_Listener_config" path="/listchannels"/>
+		<slack:get-conversationslist doc:name="Conversations list" doc:id="5bddfd0d-1a99-4a9b-b3a6-61a1992302a8" config-ref="Slack_Connector_Config" excludeArchived="true" types="public_channel,private_channel"/>
+		<ee:transform doc:name="Transform Message" doc:id="ee5d7095-bfa9-4759-84a8-1588abfbdaa8" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="google-to-slackFlow3" doc:id="da4b6750-7d2d-4c42-a79f-90b22d52b9bd" >
+		<http:listener doc:name="/admin_invite" doc:id="55f1768d-c4ed-4d99-a77d-52a46fb902be" config-ref="HTTPS_Listener_config" path="/admin_invite"/>
+		<ee:transform doc:name="Transform Message" doc:id="aa0f6aa7-6268-4c3c-bd67-83147d90a408" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	channel_ids: "C089URDV21W",
+	custom_message: "Come join the team!",
+	is_restricted: true,
+	team_id: "T03DRRTK1UK",
+	email: "djuang+surge@salesforce.com"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<slack:create-adminusersinvite doc:name="Admin users invite" doc:id="76570237-a278-4d13-9f48-ef29689399a4" config-ref="Slack_Connector_Config"/>
+		<ee:transform doc:name="Transform Message" doc:id="81e25291-cf1a-4b09-8551-27c274cc5ca0" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="google-to-slackFlow" doc:id="f05bbeee-00d1-479e-a2a0-fc8398e6cc3e" >
+		<http:listener doc:name="/send" doc:id="4dea182a-9e55-4dc2-9f90-0689ccdb8a2b" config-ref="HTTPS_Listener_config" path="/send"/>
+		<ee:transform doc:name="Transform Message" doc:id="6cf0b0a5-dc8c-4645-953a-e5741b2fb52a" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+        channel: "demos",
+        text: "Hello World!"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<slack:create-chatpost-message doc:name="Send Message" doc:id="9b8fe9ab-3144-4f31-9205-a98be955cce7" config-ref="Slack_Connector_Config"/>
+		<ee:transform doc:name="Transform Message" doc:id="c7ee10e1-928f-488e-8cf0-29d5e7ad5f49" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
